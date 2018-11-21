@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>FC-python wrapper-forecast</title>
+
+<!-- If you are using downloaded FusionCharts libraries, uncomment the below code   -->
+
+
+	{% load static %}
+    <link rel="stylesheet" href="{% static 'css/fontawesome.min.css' %}">
+   	<script type="text/javascript" src="{% static "js/fusioncharts.js" %}"></script>
+   	<script type="text/javascript" src="{% static "js/themes/fusioncharts.theme.fusion.js" %}"></script>
+    {% load bootstrap4 %}
+    {% bootstrap_css %}
+    {% bootstrap_javascript jquery='full' %}
+    {{ form.media }}
+
+<!--
+   <script type="text/javascript" src="//cdn.fusioncharts.com/fusioncharts/latest/fusioncharts.js"></script>
+   <script type="text/javascript" src="//cdn.fusioncharts.com/fusioncharts/latest/themes/fusioncharts.theme.fusion.js"></script>
+ -->
+     <script>
+        function onDataplotClick(eventObj) {
+            $.ajax({
+               type: "POST",
+               url: {{'performance'}},
+               data: {
+                   csrfmiddlewaretoken: '{{ csrf_token }}',
+                   clicked_date: eventObj.data.categoryLabel  /* Passing the data */
+               },
+                success:  function(json){
+                    /* You don't have to do anything here since the def chart function is already rerendering the chart
+                    in the line return render(....). You could do an IF NOT POST REQUEST THEN RETURN JSON instead of
+                    returning the entire render.
+                    */
+                    FusionCharts.items["myChart"].setJSONData(json);
+                    console.log("{{ chart }}")
+           }
+            });
+            //FusionCharts.items["chartTwo"].setJSONData(chartData);
+            document.getElementById("plotclick").innerHTML = "Value: " + eventObj.data.dataValue + " On: " +
+                eventObj.data.categoryLabel + " " + eventObj.data.datasetName;
+        }
+    </script>
+
+</head>
+<body style="font-family:'Helvetica Neue', Arial; font-size: 16px;">
+<div class="container-fluid" style="min-height:95%; ">
+    <div class="col-sm-2">
+		   <!-- Great, til you resize. -->
+			<!--<div class="well bs-sidebar affix" id="sidebar" style="background-color:#fff">-->
+    </div> <!--col-sm-2-->
+
+	<h3>{{ chartTitle|safe }}</h3>
+    <div class = "row">
+	    <div id="chart-1">{{ output|safe }}</div>
+	    <a href="/">Back</a>
+    </div>
+
+
+     <form action="fetching-data-from-forecast-database" class="form-inline" method="post">  {% csrf_token %}
+        <div class="form-group">
+            {% block content %}
+
+                <label for="station_dropdown" class="col-sm2 control-label">Station Selection </label>
+                <select class='form-control' name="station_dropdown" id="station_dropdown" onchange="this.form.submit()">
+                {% for station in cnrfc_ids %}
+                    <option value={{ station }}>{{ station }}</option>
+                {% endfor %}
+                </select>
+        </div>
+        <div class="form-group">
+                <label for="day_dropdown" class="col-sm2 control-label">Forecast Day </label>
+                <select class='form-control' name="day_dropdown" id="day_dropdown" onchange="this.form.submit()">
+                {% with ''|center:15 as range %}
+                    {% for _ in range %}
+                        <option value={{ forloop.counter }}>{{ forloop.counter }}</option>
+                    {% endfor %}
+                {% endwith %}
+                </select>
+        </div>
+        <div class="form-group">
+                {{ form.start_date }}
+                {% csrf_token %}
+        </div>
+     <div class="form-group">
+                {{ form.end_date }}
+                {% csrf_token %}
+                <input type="submit" value="Submit" class="btn btn-primary form-control" />
+            {% endblock %}
+        </div>
+    </form>
+</div>
+<div>
+            <p id ="plotclick"></p>
+</div>
+</body>
+</html>
+
+

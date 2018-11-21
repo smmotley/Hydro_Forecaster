@@ -1,0 +1,8 @@
+.marker {
+  background-image: url('/static/mapbox-icon.png');
+  background-size: cover;
+  width: 25px;
+  height: 50px;
+  cursor: pointer;
+}
+
