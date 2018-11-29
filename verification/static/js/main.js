@@ -9,6 +9,7 @@ let geojson = {
 };
 
 function json2geojson(json){
+    console.log(json)
     for (var i = 0; i < json.data.length; i++) {
     geojson.features.push({
         "type": "Feature",
@@ -18,6 +19,8 @@ function json2geojson(json){
         },
         "properties": {
             "id": json.data[i]["id"],
+            "info": json.data[i]["name"],
+            "type": json.data[i]["type"]
         }
     });
 }
@@ -34,12 +37,18 @@ createMap(map => {
                 var el = document.createElement('div');
                 el.className = 'marker';
                 el.id = 'marker_' + feature.properties.id;
+                if (feature.properties.type == 'POWERHOUSE'){
+                        el.style.backgroundImage = 'url(/static/images/pp_marker.png)';
+                        el.style.width = '25px';
+                        el.style.height = '30px';
+                    }
+                console.log(feature)
 
                 let popup = new mapboxgl.Popup({
                     offset: 25,
                     closeButton: false,
                     closeOnClick: true
-                }).setHTML(feature.properties.id);
+                }).setHTML(feature.properties.id +'<br>'+ feature.properties.info);
 
                 new mapboxgl.Marker(el)
                         .setLngLat(feature.geometry.coordinates)
@@ -48,8 +57,20 @@ createMap(map => {
                 el.addEventListener('click', (e) =>
                 {
                    let station_name = (e.target.id).split("_");
-                   console.log(station_name);
+                   //console.log(station_name);
                    marker_clicked(station_name[1])
+                })
+                el.addEventListener('mouseover', (e) =>
+                {
+                   let station_name = (e.target.id).split("_");
+                   popup.addTo(map);
+                   //console.log(station_name);
+                })
+                el.addEventListener('mouseout', (e) =>
+                {
+                   let station_name = (e.target.id).split("_");
+                   popup.remove();
+                   //console.log(station_name);
                 })
 
             });

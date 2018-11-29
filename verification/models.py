@@ -24,26 +24,53 @@ class Historical(models.Manager):
                            "WHERE f.date_created > %s AND f.date_created < %s "
                            "GROUP BY f.date_valid ORDER BY f.date_valid", [user_selected_start, user_selected_end])
 
-    def cnrfc_vs_metered(self, user_selected_start, user_selected_end, station_id):
-        return Forecasts.objects.raw("SELECT 1 as id, cnrfc.MFAC1 as MFAC1, metered.R11 as R11,"
-                                     "cnrfc.date_valid, ROUND(cnrfc.MFAC1-metered.R11) as R11_error "
+    def cnrfc_vs_metered(self, pcwa_meter, cnrfc_meter, user_selected_start, user_selected_end):
+        if pcwa_meter == 'R20':
+            return Forecasts.objects.raw(("SELECT 1 as id, (cnrfc.MFAC1 - (cnrfc.NMFC1 + cnrfc.RUFC1))*1000 as R20_EST, "
+                                          "metered.R20 ,cnrfc.date_valid, "
+                                          "cnrfc.NMFC1 * 1000 as NMFC1, cnrfc.RUFC1 * 1000 as RUFC1, cnrfc.MFAC1 * 1000 as MFAC1 "
+                                          "FROM cnrfc_actuals as cnrfc "
+                                          "JOIN metered_actuals AS metered ON DATETIME(cnrfc.date_valid,'localtime')=metered.date_valid "
+                                          "WHERE cnrfc.date_created > %s AND cnrfc.date_created < %s "
+                                          "GROUP BY cnrfc.date_valid ORDER BY cnrfc.date_valid"
+                                         ),
+                                         [user_selected_start, user_selected_end])
+        return Forecasts.objects.raw(("SELECT 1 as id, cnrfc.{} * 1000 as {}, metered.{},"
+                                     "cnrfc.date_valid "
                                      "FROM cnrfc_actuals as cnrfc "
-                                     "JOIN metered_actuals AS metered ON cnrfc.date_valid=metered.date_valid "
+                                     "JOIN metered_actuals AS metered ON DATETIME(cnrfc.date_valid,'localtime')=metered.date_valid "
                                      "WHERE cnrfc.date_created > %s AND cnrfc.date_created < %s "
-                                     "GROUP BY cnrfc.date_valid ORDER BY cnrfc.date_valid",
+                                     "GROUP BY cnrfc.date_valid ORDER BY cnrfc.date_valid")
+                                     .format((cnrfc_meter), (cnrfc_meter), (pcwa_meter)),
                                      [user_selected_start, user_selected_end])
 
     def pcwa_metered(self, station_id, user_selected_start):
-        test = "SELECT 1 as id, R11, date_valid FROM metered_actuals WHERE date_valid > %s ", [user_selected_start]
-
         return Forecasts.objects.raw("SELECT 1 as id, * "
                                      "FROM metered_actuals "
                                      "WHERE date_valid > %s ",
                                      [user_selected_start])
 
-    def test(self):
-        return Forecasts.objects.raw("SELECT 1 as id, * from metered_actuals ")
-
+    def analog_finder(self, pcwa_meter, cnrfc_meter, user_selected_start, user_selected_end):
+        return Forecasts.objects.raw((
+            "SELECT 1 as id, cnrfc.{} * 1000 as {}, metered.{}, cnrfc.date_valid as cnrfc_date, "
+            "metered.date_valid, ROUND((cnrfc.MFAC1*1000)-metered.R11) as R11_error, a.precip, "
+            "(SELECT MIN(a.ROWID) FROM actuals AS aa WHERE aa.ROWID > a.ROWID) as next_rowid, "
+            "(SELECT precip from actuals as precip where precip.ROWID = "
+            "(SELECT MIN (aa.ROWID) FROM actuals as aa WHERE aa.ROWID > a.ROWID)) as next_actual, "
+            "(SELECT CASE WHEN "
+            "(SELECT precip from actuals as precip WHERE precip.ROWID = "
+                  "(SELECT MIN (aa.ROWID) FROM actuals as aa WHERE aa.ROWID > a.ROWID)) - a.precip > 0 "
+            "THEN "
+            "ROUND((SELECT precip from actuals as precip WHERE precip.ROWID = "
+                  "(SELECT MIN (aa.ROWID) FROM actuals as aa WHERE aa.ROWID > a.ROWID)) - a.precip,2) "
+            "ELSE 0 "
+            "END) AS precip_hr "
+            "FROM cnrfc_actuals as cnrfc "
+            "JOIN metered_actuals AS metered ON DATETIME(cnrfc.date_valid,'localtime')=metered.date_valid "
+            "JOIN actuals as a on DATETIME(cnrfc.date_valid,'localtime')=a.date_valid "
+            "WHERE cnrfc.date_created > %s AND cnrfc.date_created < %s "
+            "GROUP BY cnrfc.date_valid ORDER BY cnrfc.date_valid ")
+             .format((cnrfc_meter), (cnrfc_meter), (pcwa_meter)),[user_selected_start, user_selected_end])
 
 class Forecasts(models.Model):
     date_created = models.TextField()

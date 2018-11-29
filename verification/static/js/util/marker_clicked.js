@@ -27,7 +27,7 @@ export default function marker_clicked(eventObj) {
             inthelinereturnrender(....).YoucoulddoanIFNOTPOSTREQUESTTHENRETURNJSONinsteadof
             returningtheentirerender.
             */
-            console.log("it worked, here is what is being passed back from Python: " + json);
+            //console.log("it worked, here is what is being passed back from Python: " + json);
             FusionCharts.items["myChart"].setJSONData(json);
         },
         error: function () {

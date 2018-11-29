@@ -54,22 +54,35 @@ def chart(request, user_selected_site, user_selected_start, model, user_selected
     # Main Keys
     city_ids = []
     #models = ['MFAC1', 'GFS', 'EURO', 'EURO_EPS', 'GFS_bc', 'NWS', 'actual']
-    cnrfc_ids = ['MFAC1', 'NMFC1', 'RUFC1','actual']
+    #cnrfc_ids = ['MFAC1', 'NMFC1', 'RUFC1','actual']
+    stations = {
+        "MFAC1":"R11",
+        "NMFC1":"R10",
+        "RUFC1":"R30",
+        "R20_EST":"R20"
+    }
+    cnrfc_ids= ["MFAC1", "R11"]
     dataSource['dataset'] = []
     dataSource['linkeddata'] = []
     dataSource['dataset'] = []
     dataSource['categories'] = []
 
-
+    sql_res = Forecasts.objects.cnrfc_vs_metered(user_selected_start,user_selected_end)
     for cnrfc_id in cnrfc_ids:
         categories = {}
         categories['category'] = []
         dataset = {}
         dataset['data'] = []
         dataset['seriesname'] = cnrfc_id
-        database = database_pull(dataset, categories, user_selected_start, user_selected_end, cnrfc_id, forecast_type)
-        dataSource['dataset'].append(database[0])
-    dataSource['categories'].append(database[1])
+        for key in sql_res:
+            data = {}
+            category = {}
+            category['label'] = key.date_valid.strftime("%m-%d-%Y %H:%M")
+            data['value'] = getattr(key, cnrfc_id)
+            dataset['data'].append(data)
+            categories['category'].append(category)
+        dataSource['dataset'].append(dataset)
+    dataSource['categories'].append(categories)
 
     #city_ids = list(Forecasts.objects.values_list('city_code', flat=True).distinct())
 
@@ -96,7 +109,7 @@ def database_pull(dataset, categories, user_selected_start, user_selected_end, s
         for key in Forecasts.objects.cnrfc_vs_metered(user_selected_start,user_selected_end, station_id):
             data = {}
             category = {}
-            category['label'] = key.date_valid.strftime("%m-%d-%Y")
+            category['label'] = key.date_valid.strftime("%m-%d-%Y %H:%M")
             data['value'] = getattr(key, station_id)
 
             dataset['data'].append(data)
